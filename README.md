@@ -27,7 +27,7 @@ This app keeps your sensitive queries and breach database **offline and in your 
 
 git clone https://github.com/yourusername/self-hosted-database-info-leak-checker.git
 cd breach-data-checker
-2. Prepare Your Breach Data
+### 2. Prepare Your Breach Data
 Place your breach dataset in the /data folder. Supported formats:
 
 .txt – One account per line
@@ -44,7 +44,9 @@ Edit
 hacker@example.com
 user123
 test@domain.com
-3. Open in Browser
+
+### 3. Open in Browser
+
 Simply open index.html in your browser.
 No build step, no server required — works entirely client-side.
 
