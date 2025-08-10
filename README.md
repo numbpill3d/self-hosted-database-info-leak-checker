@@ -24,6 +24,71 @@ This app keeps your sensitive queries and breach database **offline and in your 
 ## Getting Started
 
 ### 1. Clone the Repository
-```bash
+
 git clone https://github.com/yourusername/self-hosted-database-info-leak-checker.git
 cd breach-data-checker
+2. Prepare Your Breach Data
+Place your breach dataset in the /data folder. Supported formats:
+
+.txt – One account per line
+
+.csv – Comma-separated values
+
+.json – Array of strings
+
+Example data/breach-list.txt:
+
+graphql
+Copy
+Edit
+hacker@example.com
+user123
+test@domain.com
+3. Open in Browser
+Simply open index.html in your browser.
+No build step, no server required — works entirely client-side.
+
+## Usage
+Select your breach file or paste a list in the input field.
+
+Type or paste the email/username you want to check.
+
+Matches will appear in the Results section.
+
+Scroll to view all matches if the list is long.
+
+## Recommended File Structure
+
+breach-data-checker/
+│
+├── index.html        # Main UI
+├── style.css         # Retro monochrome theme
+├── script.js         # Logic for matching
+├── /data             # Your breach data (not tracked by GitHub)
+│   ├── breach-list.txt
+│   ├── breach-list.csv
+│   └── breach-list.json
+└── /assets           # Icons, UI graphics
+
+## Recommended GitHub Tabs
+
+Code – Main repository.
+
+Issues – Bug reports and feature requests.
+
+Discussions – UI ideas, data management tips.
+
+Wiki – Guides for setting up breach lists.
+
+Projects – Feature roadmap & UI overhaul plans.
+
+Releases – Stable tagged versions.
+
+Security – Policy for vulnerability reports.
+
+## Privacy Note
+This app never sends any data to a server or third-party API.
+All checks happen in your browser using your local breach dataset.
+
+## License
+MIT License – free to use, modify, and distribute.
