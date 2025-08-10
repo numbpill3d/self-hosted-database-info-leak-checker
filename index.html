@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="mono98">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Breach Data Checker (Self-Hosted)</title>
+<style>
+/* =========================================================
+   MONOCHROME ORIGINAL MAC / WINDOWS 98 AESTHETIC — ENHANCED
+   ========================================================= */
+:root{
+  --bg:#f5f5f5; --ink:#111; --ink-soft:#333; --line:#000;
+  --mid:#dcdcdc; --mid2:#c0c0c0; --light:#fff; --shadow:#9a9a9a;
+  --accent:#000; --ok:#0a0; --warn:#740; --bad:#900;
+  --scanline:repeating-linear-gradient(to bottom, rgba(0,0,0,0.025) 0 1px, transparent 1px 3px);
+  --crt:contrast(1.02) saturate(0) brightness(0.985);
+  --mono-font:"ChicagoFLF","VT323","Courier New",Courier,monospace;
+  --sys-font:"Geneva","MS Sans Serif","Helvetica Neue",Arial,sans-serif;
+  --radius:0px;
+  --grid-snap:8px;
+}
+
+html,body{ height:100%; background:var(--bg); color:var(--ink); filter:var(--crt); image-rendering:pixelated; }
+body{ margin:0; font-family:var(--sys-font); letter-spacing:0.2px; overflow:auto; }
+
+/* Desktop */
+#desktop{ position:relative; min-height:100vh; background:linear-gradient(0deg,transparent,transparent),var(--scanline); }
+
+/* Menubar */
+.menubar{ position:sticky; top:0; z-index:10000; height:26px; display:flex; align-items:center; gap:8px; padding:0 8px;
+  background:linear-gradient(#fff,#e8e8e8); border-bottom:1px solid #000; box-shadow:inset 0 1px 0 var(--light), inset 0 -1px 0 var(--shadow); user-select:none; }
+.menubar .apple{font-weight:bold; padding:0 8px;}
+.menu{ position:relative; padding:2px 8px; border-radius:2px; cursor:default; }
+.menu:hover{ background:#eaeaea; } .menu.open{ background:#dcdcdc; }
+.menu .drop{ position:absolute; top:100%; left:0; min-width:220px; background:#fff; border:1px solid #000; box-shadow:2px 2px 0 #000; z-index:9999; }
+.menu .item{ padding:6px 10px; display:flex; justify-content:space-between; gap:10px; white-space:nowrap; border-bottom:1px dotted #bbb; }
+.menu .item:last-child{border-bottom:0} .menu .item:hover{ background:#efefef;} .menu .item.kbd span{ opacity:0.7; font-family:var(--mono-font); }
+
+/* Toasts */
+.toastbox{ position:fixed; right:10px; bottom:10px; display:flex; flex-direction:column; gap:8px; z-index:99999; }
+.toast{ background:#fff; border:2px solid #000; box-shadow:3px 3px 0 #000; padding:8px 10px; font-size:12px; max-width:min(50ch, 92vw); }
+
+/* Window */
+.window{ position:absolute; top:80px; left:80px; width:min(1180px, calc(100vw - 24px)); height:min(780px, calc(100vh - 60px));
+  min-width:340px; min-height:440px; background:#fff; border:2px solid #000; box-shadow:4px 4px 0 #000; display:flex; flex-direction:column; }
+.titlebar{ height:24px; background:linear-gradient(#dcdcdc,#c9c9c9); border-bottom:1px solid #000; display:flex; align-items:center; justify-content:space-between; padding:0 6px; user-select:none; cursor:move; }
+.titlebar .title{ font-weight:bold; font-size:12px; letter-spacing:0.2px; }
+.winbuttons{ display:flex; gap:4px; }
+.btnbox{ width:14px; height:14px; background:#fff; border:1px solid #000; box-shadow: inset 1px 1px 0 var(--light), inset -1px -1px 0 var(--shadow); display:grid; place-items:center; font-size:10px; cursor:pointer; }
+.btnbox:active{ box-shadow: inset -1px -1px 0 var(--light), inset 1px 1px 0 var(--shadow); transform: translate(1px,1px); }
+
+/* Resize handles */
+.resize-edge{ position:absolute; z-index:10; }
+.resize-e{ right:-3px; top:0; bottom:0; width:6px; cursor:ew-resize; }
+.resize-s{ left:0; right:0; bottom:-3px; height:6px; cursor:ns-resize; }
+.resize-se{ right:-4px; bottom:-4px; width:10px; height:10px; cursor:nwse-resize; }
+
+/* Content split + splitter */
+.window .content{ display:grid; grid-template-columns: var(--side-w, 280px) 1fr; grid-template-rows: 1fr auto; height:100%; }
+.sidebar{ background:#f8f8f8; border-right:1px solid #000; display:flex; flex-direction:column; position:relative; }
+.splitter{ position:absolute; right:-3px; top:0; bottom:22px; width:6px; cursor:col-resize; }
+.sideheader{ padding:8px; font-weight:bold; border-bottom:1px solid #000; }
+.sidebody{ padding:8px; overflow:auto; display:flex; flex-direction:column; gap:10px; }
+
+/* Retro inputs */
+label{ font-size:12px; }
+fieldset{ border:1px solid #000; padding:8px; background:#fff; box-shadow: inset 1px 1px 0 var(--light), inset -1px -1px 0 var(--shadow); }
+legend{ padding:0 6px; font-weight:bold; }
+.input, textarea, select{ width:100%; font-family:var(--mono-font); font-size:12px; background:#fff; color:#000; border:1px solid #000; padding:6px 6px; outline:none;
+  box-shadow: inset 1px 1px 0 var(--light), inset -1px -1px 0 var(--shadow); }
+textarea{ min-height:70px; resize:vertical; }
+.button{ font-family:var(--sys-font); font-size:12px; background:#fff; border:1px solid #000; padding:6px 10px; cursor:pointer;
+  box-shadow:2px 2px 0 #000, inset 1px 1px 0 var(--light), inset -1px -1px 0 var(--shadow); }
+.button:active{ box-shadow: inset 1px 1px 0 var(--light), inset -1px -1px 0 var(--shadow); transform: translate(1px,1px); }
+
+/* Main pane */
+.main{ display:flex; flex-direction:column; overflow:hidden; }
+.toolbar{ display:flex; gap:8px; padding:6px; border-bottom:1px solid #000; background:#f0f0f0; align-items:center; flex-wrap:wrap; }
+.toolbar .spacer{ flex:1; }
+.toolbar .search{ min-width:220px; }
+.statusbar{ grid-column:1/-1; height:22px; display:flex; align-items:center; gap:12px; padding:0 8px; border-top:1px solid #000; background:#efefef; font-size:11px; }
+
+/* Results */
+.panel{ padding:8px; overflow:auto; display:flex; flex-direction:column; gap:10px; height:100%; }
+.kv{ display:grid; grid-template-columns: 170px 1fr; gap:6px 10px; font-size:12px; }
+.kv div:nth-child(odd){ color:#444; }
+hr{ border:none; border-top:1px solid #000; }
+.badge{ font-family:var(--mono-font); padding:2px 6px; border:1px solid #000; background:#fff; }
+.badge.ok{ border-color:var(--ok); color:var(--ok); }
+.badge.warn{ border-color:var(--warn); color:var(--warn); }
+.badge.bad{ border-color:var(--bad); color:var(--bad); }
+
+/* Table */
+.table{ width:100%; border-collapse:collapse; font-size:12px; }
+.table th,.table td{ border:1px solid #000; padding:6px; vertical-align:top; }
+.table th{ background:#f4f4f4; text-align:left; }
+
+/* Dialogs */
+.dialog{ position:fixed; z-index:99999; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; border:2px solid #000; box-shadow:4px 4px 0 #000; min-width:420px; max-width:min(92vw,900px); }
+.dialog .head{ background:linear-gradient(#dcdcdc,#c9c9c9); padding:6px; border-bottom:1px solid #000; font-weight:bold; cursor:move; }
+.dialog .body{ padding:10px; max-height:60vh; overflow:auto; }
+.dialog .foot{ padding:8px; border-top:1px solid #000; display:flex; gap:8px; justify-content:flex-end; }
+
+/* Drag-drop overlay */
+.dropmask{ position:fixed; inset:0; background:rgba(255,255,255,0.8); border:3px dashed #000; display:none; align-items:center; justify-content:center; z-index:99998; }
+.dropmask.active{ display:flex; }
+.dropmask .msg{ font-family:var(--mono-font); font-size:18px; }
+
+/* Scrollbars */
+*{ scrollbar-color:#000 #eee; scrollbar-width:thin; }
+::-webkit-scrollbar{ width:10px; height:10px; }
+::-webkit-scrollbar-track{ background:#eee; border:1px solid #000; }
+::-webkit-scrollbar-thumb{ background:#000; }
+
+/* Hidden & helpers */
+.hidden{ display:none !important; }
+.help{ font-size:11px; color:#333; line-height:1.45; }
+kbd{ border:1px solid #000; padding:0 3px; background:#fff; box-shadow:1px 1px 0 #000; }
+
+/* Selection */
+::selection{ background:#000; color:#fff; }
+
+/* Responsive flow mode */
+body.responsive #desktop{ padding:8px; }
+body.responsive .window{ position:static; width:100%; height:auto; max-width:100%; box-shadow:4px 4px 0 #000; }
+body.responsive .titlebar{ cursor:default; }
+body.responsive .window .content{ grid-template-columns: 1fr; grid-template-rows:auto auto auto; height:auto; }
+body.responsive .sidebar{ border-right:none; border-bottom:1px solid #000; }
+body.responsive .splitter{ display:none; }
+body.responsive .main{ overflow:visible; }
+body.responsive .panel{ max-height:none; }
+@media (max-width:600px){
+  body.responsive .dialog{ min-width:0; width:94vw; }
+  .kv{ grid-template-columns: 120px 1fr; }
+}
+</style>
+</head>
+<body>
+  <div id="desktop" aria-label="Retro Desktop">
+    <div class="menubar" id="menubar" role="menubar" aria-label="Application Menu">
+      <div class="apple" aria-hidden="true">⟐</div>
+      <div class="menu" data-menu="file" tabindex="0" aria-haspopup="true" aria-expanded="false">
+        File
+        <div class="drop hidden" role="menu">
+          <div class="item" role="menuitem" data-cmd="import">Import Dataset… <span class="kbd"><span>Ctrl</span>+<span>O</span></span></div>
+          <div class="item" role="menuitem" data-cmd="import-append">Append Dataset…</div>
+          <div class="item" role="menuitem" data-cmd="export">Export IndexedDB… <span class="kbd"><span>Ctrl</span>+<span>S</span></span></div>
+          <div class="item" role="menuitem" data-cmd="clear">Clear Store</div>
+          <div class="item" role="menuitem" data-cmd="quit">Quit</div>
+        </div>
+      </div>
+      <div class="menu" data-menu="edit" tabindex="0">
+        Edit
+        <div class="drop hidden">
+          <div class="item" role="menuitem" data-cmd="copy">Copy</div>
+          <div class="item" role="menuitem" data-cmd="paste">Paste</div>
+          <div class="item" role="menuitem" data-cmd="selectall">Select All</div>
+        </div>
+      </div>
+      <div class="menu" data-menu="tools" tabindex="0">
+        Tools
+        <div class="drop hidden">
+          <div class="item" role="menuitem" data-cmd="settings">Settings…</div>
+          <div class="item" role="menuitem" data-cmd="rebuild">Rebuild Index</div>
+          <div class="item" role="menuitem" data-cmd="bloom-verify">Bloom Stats</div>
+          <div class="item" role="menuitem" data-cmd="wipe-bloom">Wipe Bloom Filter</div>
+          <div class="item" role="menuitem" data-cmd="clear-matches">Clear Matches</div>
+          <div class="item" role="menuitem" data-cmd="open-log">Open Import Log</div>
+        </div>
+      </div>
+      <div class="menu" data-menu="view" tabindex="0">
+        View
+        <div class="drop hidden">
+          <div class="item" role="menuitem" data-cmd="fit">Fit to Screen</div>
+          <div class="item" role="menuitem" data-cmd="reset">Reset Window Position <span class="kbd"><span>Alt</span>+<span>0</span></span></div>
+          <div class="item" role="menuitem" data-cmd="dock-left">Dock Left <span class="kbd"><span>Alt</span>+<span>1</span></span></div>
+          <div class="item" role="menuitem" data-cmd="dock-right">Dock Right <span class="kbd"><span>Alt</span>+<span>2</span></span></div>
+          <div class="item" role="menuitem" data-cmd="undock">Undock</div>
+          <div class="item" role="menuitem" data-cmd="zoom-in">Zoom In</div>
+          <div class="item" role="menuitem" data-cmd="zoom-out">Zoom Out</div>
+          <div class="item" role="menuitem" data-cmd="zoom-reset">Zoom Reset</div>
+        </div>
+      </div>
+      <div class="menu" data-menu="help" tabindex="0">
+        Help
+        <div class="drop hidden">
+          <div class="item" role="menuitem" data-cmd="about">About Breach Data Checker</div>
+          <div class="item" role="menuitem" data-cmd="docs">Usage Notes</div>
+          <div class="item" role="menuitem" data-cmd="shortcuts">Keyboard Shortcuts</div>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <div class="badge" id="storeState">Store: empty</div>
+    </div>
+
+    <!-- MAIN WINDOW -->
+    <div class="window" id="mainWin" style="left:48px;top:64px;">
+      <div class="titlebar" data-drag=".window">
+        <div class="title" id="titleText">Breach Data Checker — Self-Hosted</div>
+        <div class="winbuttons">
+          <div class="btnbox" title="Minimize" data-win="min">_</div>
+          <div class="btnbox" title="Maximize" data-win="max">▢</div>
+          <div class="btnbox" title="Close" data-win="close">✕</div>
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- LEFT: controls -->
+        <aside class="sidebar" aria-label="Input Sidebar">
+          <div class="splitter" id="splitter" aria-hidden="true"></div>
+          <div class="sideheader">Inputs</div>
+          <div class="sidebody" id="sideScroll">
+            <fieldset>
+              <legend>Check</legend>
+              <label for="query">Email / Username</label>
+              <input id="query" class="input" placeholder="name@example.com or handle" autocomplete="off" />
+              <div style="height:6px"></div>
+              <button class="button" id="btnCheck" title="Run check (Enter)">Check Now</button>
+              <div style="height:8px"></div>
+              <label class="help">Tip: multiple values accepted (comma, space, or newline separated). <br/>Shortcut: <kbd>Ctrl</kbd>+<kbd>F</kbd> focuses search.</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Bulk Paste</legend>
+              <textarea id="bulk" placeholder="paste emails or usernames here, one per line"></textarea>
+              <div style="height:6px"></div>
+              <button class="button" id="btnBulkCheck">Bulk Check</button>
+            </fieldset>
+
+            <fieldset>
+              <legend>Dataset</legend>
+              <input type="file" id="file" class="input" accept=".csv,.json,.ndjson,.txt,.gz" />
+              <div style="height:6px"></div>
+              <button class="button" id="btnImport">Import / Append</button>
+              <div style="height:8px"></div>
+              <label class="help">
+                Supported: CSV (headers ok), JSON array, NDJSON, or plain list. Gzip files welcomed. Columns: <b>email</b>, <b>username</b>, <b>domain</b>, <b>breach</b>, <b>hash</b>.
+              </label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Options</legend>
+              <label><input type="checkbox" id="optNormalize" checked /> case-insensitive</label><br/>
+              <label><input type="checkbox" id="optTokenize" checked /> split inputs on commas / spaces / newlines</label><br/>
+              <label><input type="checkbox" id="optUseBloom" checked /> use Bloom filter pre-check</label><br/>
+              <label><input type="checkbox" id="optHashCompare" /> compare hashed dataset if provided (SHA-1/SHA-256)</label>
+            </fieldset>
+          </div>
+        </aside>
+
+        <!-- RIGHT: main -->
+        <section class="main" aria-label="Results Area">
+          <div class="toolbar">
+            <button class="button" id="tbImport" title="Import"><span aria-hidden="true">📁</span> Import</button>
+            <button class="button" id="tbRebuild" title="Rebuild Bloom"><span aria-hidden="true">🔧</span> Rebuild</button>
+            <button class="button" id="tbExport" title="Export database"><span aria-hidden="true">💾</span> Export DB</button>
+            <div class="spacer"></div>
+            <input id="filterInput" class="input search" placeholder="filter results (live)" />
+            <button class="button" id="btnClearMatches">Clear Matches</button>
+            <button class="button" id="btnExportMatches">Export Matches (CSV)</button>
+            <span class="badge" id="badgeBloom">Bloom: none</span>
+            <span class="badge" id="badgeRecords">Records: 0</span>
+          </div>
+
+          <div class="panel" id="panel">
+            <div class="kv">
+              <div>Dataset</div><div id="kvDataset">none</div>
+              <div>IndexedDB</div><div id="kvIDB">not initialized</div>
+              <div>Bloom bits</div><div id="kvBloomBits">0</div>
+              <div>Bloom k</div><div id="kvBloomK">0</div>
+              <div>Estimated FPR</div><div id="kvFpr">n/a</div>
+              <div>Last Action</div><div id="kvAction">ready</div>
+            </div>
+            <hr/>
+            <h3>Results</h3>
+            <div id="results" class="help">no queries yet.</div>
+            <hr/>
+            <h3>Recent Matches</h3>
+            <table class="table" id="table">
+              <thead><tr><th>#</th><th>Input</th><th>Type</th><th>Breach</th><th>Details</th></tr></thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- STATUS -->
+        <div class="statusbar" role="status">
+          <span id="status">Ready.</span>
+          <span class="spacer"></span>
+          <span id="clock"></span>
+        </div>
+      </div>
+
+      <!-- Resize edges -->
+      <div class="resize-edge resize-e" id="resE" aria-hidden="true"></div>
+      <div class="resize-edge resize-s" id="resS" aria-hidden="true"></div>
+      <div class="resize-edge resize-se" id="resSE" aria-hidden="true"></div>
+    </div>
+
+    <!-- SETTINGS DIALOG -->
+    <div class="dialog hidden" id="dlgSettings" role="dialog" aria-modal="true" aria-label="Settings">
+      <div class="head">Settings</div>
+      <div class="body">
+        <div class="kv">
+          <div>Bloom size (bits)</div>
+          <div><input id="inBloomBits" class="input" type="number" value="1048576" /></div>
+          <div>Hash functions (k)</div>
+          <div><input id="inBloomK" class="input" type="number" value="5" /></div>
+          <div>Max import lines per chunk</div>
+          <div><input id="inChunk" class="input" type="number" value="20000" /></div>
+        </div>
+        <div style="height:10px"></div>
+        <div class="help">
+          Bloom filter reduces false negatives to zero with a configurable false positive rate. More bits and k improve accuracy at the cost of memory.
+        </div>
+      </div>
+      <div class="foot">
+        <button class="button" data-close="#dlgSettings">Cancel</button>
+        <button class="button" id="btnSaveSettings">Save</button>
+      </div>
+    </div>
+
+    <!-- ABOUT DIALOG -->
+    <div class="dialog hidden" id="dlgAbout">
+      <div class="head">About</div>
+      <div class="body">
+        <div class="help">
+          <b>Breach Data Checker</b> — entirely local, retro UI. bring your own breach data; nothing leaves your machine. supports CSV/JSON/NDJSON/plain lists (gzip ok), IndexedDB storage, Bloom prefilter, and hashed comparisons via Web Crypto.
+        </div>
+      </div>
+      <div class="foot">
+        <button class="button" data-close="#dlgAbout">OK</button>
+      </div>
+    </div>
+
+    <!-- DOCS DIALOG -->
+    <div class="dialog hidden" id="dlgDocs">
+      <div class="head">Usage Notes</div>
+      <div class="body">
+        <ul class="help">
+          <li><b>File → Import Dataset…</b> add CSV/JSON/NDJSON/plain text lists (gzip supported on modern browsers).</li>
+          <li>Columns understood: <code>email</code>, <code>username</code>, <code>domain</code>, <code>breach</code>, <code>hash</code>.</li>
+          <li>We store normalized <i>emailLower</i>, <i>usernameLower</i>, <i>domain</i>; original row is kept in <i>raw</i>.</li>
+          <li><b>Tools → Rebuild Index</b> rebuilds Bloom filter and record indexes.</li>
+          <li>Optional <b>Hash Compare</b> compares your input’s SHA-1/256 to a dataset <code>hash</code> field.</li>
+          <li><b>View → Fit to Screen</b> forces flow layout + page scroll if your viewport is tight.</li>
+          <li>Drag & drop files anywhere. Drop text to auto-check it.</li>
+        </ul>
+      </div>
+      <div class="foot">
+        <button class="button" data-close="#dlgDocs">OK</button>
+      </div>
+    </div>
+
+    <!-- SHORTCUTS DIALOG -->
+    <div class="dialog hidden" id="dlgKeys">
+      <div class="head">Keyboard Shortcuts</div>
+      <div class="body">
+        <ul class="help">
+          <li><kbd>Ctrl</kbd>+<kbd>O</kbd> Import &nbsp;|&nbsp; <kbd>Ctrl</kbd>+<kbd>S</kbd> Export DB</li>
+          <li><kbd>Ctrl</kbd>+<kbd>F</kbd> Focus query &nbsp;|&nbsp; <kbd>Enter</kbd> Run check</li>
+          <li><kbd>Alt</kbd>+<kbd>0</kbd> Reset window &nbsp;|&nbsp; <kbd>Alt</kbd>+<kbd>1</kbd>/<kbd>2</kbd> Dock L/R</li>
+          <li><kbd>Ctrl</kbd>+<kbd>=</kbd>/<kbd>-</kbd>/<kbd>0</kbd> Zoom in/out/reset</li>
+          <li><kbd>Esc</kbd> closes dialogs</li>
+        </ul>
+      </div>
+      <div class="foot">
+        <button class="button" data-close="#dlgKeys">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drag/drop overlay + toasts -->
+  <div class="dropmask" id="dropmask"><div class="msg">Drop file(s) or text to import / check…</div></div>
+  <div class="toastbox" id="toastbox" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+/* =========================================================
+   CORE UTILITIES
+   ========================================================= */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => [...document.querySelectorAll(sel)];
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const nowClock = () => new Date().toLocaleString();
+const isEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+function tokenize(text, allow=true){ if(!allow) return [text.trim()].filter(Boolean); return String(text).split(/[\\s,;\\n\\r]+/g).map(s=>s.trim()).filter(Boolean); }
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+function snap(v,grid){ return Math.round(v/grid)*grid; }
+function toast(msg, ms=2400){ const b=$('#toastbox'); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; b.appendChild(t); setTimeout(()=>{ t.remove(); }, ms); }
+
+/* =========================================================
+   MENU
+   ========================================================= */
+(function menuInit(){
+  const menus = $$('.menu');
+  document.addEventListener('click', e=>{
+    if(!e.target.closest('.menu')) menus.forEach(m=>m.classList.remove('open')),$$('.drop').forEach(d=>d.classList.add('hidden'));
+  });
+  menus.forEach(m=>{
+    m.addEventListener('click', ()=>{
+      menus.forEach(n=>{ if(n!==m){ n.classList.remove('open'); }});
+      const drop=m.querySelector('.drop');
+      const isOpen=!drop.classList.contains('hidden');
+      $$('.drop').forEach(d=>d.classList.add('hidden'));
+      m.classList.toggle('open',!isOpen);
+      drop.classList.toggle('hidden',isOpen);
+    });
+  });
+  $$('.menu .item').forEach(i=>{
+    i.addEventListener('click', ()=>{
+      const cmd=i.dataset.cmd; runMenu(cmd);
+      $$('.drop').forEach(d=>d.classList.add('hidden'));
+      $$('.menu').forEach(m=>m.classList.remove('open'));
+    });
+  });
+})();
+
+/* =========================================================
+   WINDOW DRAG / RESIZE / DOCK
+   ========================================================= */
+function makeDraggable(titlebarSel, winEl){
+  const tb = winEl.querySelector(titlebarSel);
+  let ox=0, oy=0, dragging=false;
+  function onDown(e){
+    if(document.body.classList.contains('responsive')) return;
+    if(e.target.closest('.btnbox')) return;
+    dragging=true; const r=winEl.getBoundingClientRect();
+    ox = e.clientX - r.left; oy = e.clientY - r.top; document.body.style.userSelect='none';
+  }
+  function onMove(e){
+    if(!dragging) return;
+    let nx = e.clientX-ox, ny=e.clientY-oy;
+    nx = clamp(nx, 0, window.innerWidth - 16);
+    ny = clamp(ny, 26, window.innerHeight - 34);
+    // snap to grid
+    const g=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--grid-snap'))||8;
+    winEl.style.left = snap(nx,g)+'px';
+    winEl.style.top  = snap(ny,g)+'px';
+  }
+  function onUp(){ dragging=false; document.body.style.userSelect=''; saveWinGeom(); }
+  tb.addEventListener('mousedown', onDown);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+makeDraggable('.titlebar', $('#mainWin'));
+$$('.dialog').forEach(d=>makeDraggable('.head', d));
+
+function makeResizable(win){
+  const e=$('#resE'), s=$('#resS'), se=$('#resSE');
+  let resizing=null, ox=0, oy=0, ow=0, oh=0;
+  const onDown=(kind)=> (ev)=>{
+    if(document.body.classList.contains('responsive')) return;
+    resizing=kind; const r=win.getBoundingClientRect(); ox=ev.clientX; oy=ev.clientY; ow=r.width; oh=r.height; document.body.style.userSelect='none';
+  };
+  const onMove=(ev)=>{
+    if(!resizing) return;
+    const dx=ev.clientX-ox, dy=ev.clientY-oy;
+    const g=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--grid-snap'))||8;
+    if(resizing==='e' || resizing==='se'){ win.style.width = snap(clamp(ow+dx, 360, window.innerWidth-8), g)+'px'; }
+    if(resizing==='s' || resizing==='se'){ win.style.height= snap(clamp(oh+dy, 420, window.innerHeight-8), g)+'px'; }
+  };
+  const onUp=()=>{ if(!resizing) return; resizing=null; document.body.style.userSelect=''; saveWinGeom(); };
+  e.addEventListener('mousedown', onDown('e'));
+  s.addEventListener('mousedown', onDown('s'));
+  se.addEventListener('mousedown', onDown('se'));
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+makeResizable($('#mainWin'));
+
+function dock(where){
+  const w=$('#mainWin');
+  document.body.classList.remove('responsive');
+  const pad=6;
+  if(where==='left'){
+    w.style.left=pad+'px'; w.style.top='28px';
+    w.style.width=Math.max(360, Math.floor(window.innerWidth/2)-pad*2)+'px';
+    w.style.height=(window.innerHeight-34)+'px';
+    w.dataset.docked='left';
+  }else if(where==='right'){
+    w.style.left=Math.floor(window.innerWidth/2)+'px'; w.style.top='28px';
+    w.style.width=(Math.floor(window.innerWidth/2)-pad*2)+'px';
+    w.style.height=(window.innerHeight-34)+'px';
+    w.dataset.docked='right';
+  }else{
+    w.dataset.docked='';
+  }
+  saveWinGeom();
+}
+function undock(){ $('#mainWin').dataset.docked=''; saveWinGeom(); }
+function resetWindowPosition(){
+  document.body.classList.remove('responsive');
+  const w=$('#mainWin');
+  w.classList.remove('hidden'); w.dataset.max='0'; w.dataset.docked='';
+  w.style.left='48px'; w.style.top='64px';
+  w.style.width='min(1180px, calc(100vw - 24px))';
+  w.style.height='min(780px, calc(100vh - 60px))';
+  saveWinGeom();
+}
+
+/* splitter */
+(function splitter(){
+  const sp = $('#splitter'); const win=$('#mainWin');
+  let grab=false, startX=0, startW=0;
+  sp.addEventListener('mousedown', (e)=>{
+    grab=true; startX=e.clientX; const cs=getComputedStyle(win); startW=parseInt(cs.getPropertyValue('--side-w'))||280;
+    document.body.style.userSelect='none';
+  });
+  window.addEventListener('mousemove', (e)=>{
+    if(!grab) return;
+    const delta=e.clientX-startX; const w=clamp(startW+delta, 200, 520);
+    win.style.setProperty('--side-w', w+'px');
+  });
+  window.addEventListener('mouseup', ()=>{ if(grab){ grab=false; document.body.style.userSelect=''; localStorage.setItem('bdc:sidew', getComputedStyle(win).getPropertyValue('--side-w')); }});
+})();
+
+/* persistence */
+function saveWinGeom(){
+  const w=$('#mainWin').getBoundingClientRect();
+  const data = {
+    left: $('#mainWin').style.left, top: $('#mainWin').style.top,
+    width: $('#mainWin').style.width, height: $('#mainWin').style.height,
+    dock: $('#mainWin').dataset.docked || '',
+    responsive: document.body.classList.contains('responsive') ? 1:0,
+    zoom: document.documentElement.style.zoom || ''
+  };
+  localStorage.setItem('bdc:geom', JSON.stringify(data));
+}
+function loadWinGeom(){
+  const sidew = localStorage.getItem('bdc:sidew'); if(sidew){ $('#mainWin').style.setProperty('--side-w', sidew); }
+  const raw = localStorage.getItem('bdc:geom'); if(!raw) return;
+  try{
+    const g=JSON.parse(raw);
+    if(g.responsive){ document.body.classList.add('responsive'); }
+    if(g.left) $('#mainWin').style.left=g.left;
+    if(g.top) $('#mainWin').style.top=g.top;
+    if(g.width) $('#mainWin').style.width=g.width;
+    if(g.height) $('#mainWin').style.height=g.height;
+    if(g.dock) dock(g.dock);
+    if(g.zoom) document.documentElement.style.zoom=g.zoom;
+  }catch{}
+}
+
+/* =========================================================
+   STATUS + CLOCK
+   ========================================================= */
+(function clock(){ const el=$('#clock'); const tick=()=>{ el.textContent=nowClock(); }; tick(); setInterval(tick,1000); })();
+function setStatus(s){ $('#status').textContent=s; $('#kvAction').textContent=s; }
+
+/* =========================================================
+   INDEXEDDB
+   ========================================================= */
+const DB_NAME='breach_checker'; const DB_VER=1; let db=null;
+function idbOpen(){ return new Promise((resolve,reject)=>{ const req=indexedDB.open(DB_NAME,DB_VER);
+  req.onupgradeneeded=(ev)=>{ const db=ev.target.result;
+    if(!db.objectStoreNames.contains('records')){ const s=db.createObjectStore('records',{keyPath:'id',autoIncrement:true}); s.createIndex('emailLower','emailLower',{unique:false}); s.createIndex('usernameLower','usernameLower',{unique:false}); s.createIndex('domain','domain',{unique:false}); }
+    if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta',{keyPath:'k'});
+    if(!db.objectStoreNames.contains('bloom')) db.createObjectStore('bloom',{keyPath:'k'});
+  };
+  req.onsuccess=()=>{ db=req.result; resolve(db); }; req.onerror=()=>reject(req.error); });}
+async function idbPut(store,val){ return new Promise((resolve,reject)=>{ const tx=db.transaction(store,'readwrite'); tx.onerror=()=>reject(tx.error); tx.oncomplete=()=>resolve(); tx.objectStore(store).put(val); });}
+async function idbGet(store,key){ return new Promise((resolve,reject)=>{ const tx=db.transaction(store,'readonly'); const req=tx.objectStore(store).get(key); req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error); });}
+async function idbCount(store){ return new Promise((resolve,reject)=>{ const tx=db.transaction(store,'readonly'); const req=tx.objectStore(store).count(); req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error); });}
+async function idbClear(store){ return new Promise((resolve,reject)=>{ const tx=db.transaction(store,'readwrite'); const req=tx.objectStore(store).clear(); req.onsuccess=()=>resolve(); req.onerror=()=>reject(req.error); });}
+async function idbEachByIndex(idxName,value,onrow){ return new Promise((resolve,reject)=>{ const tx=db.transaction('records','readonly'); const idx=tx.objectStore('records').index(idxName); const range=IDBKeyRange.only(value); const req=idx.openCursor(range);
+  req.onsuccess=()=>{ const cur=req.result; if(cur){ onrow(cur.value); cur.continue(); } else resolve(); }; req.onerror=()=>reject(req.error); });}
+
+/* =========================================================
+   BLOOM FILTER
+   ========================================================= */
+let bloom = { bits:new Uint8Array(0), m:0, k:0, n:0 };
+function bloomInit(mBits,k){ const bytes=Math.ceil(mBits/8); bloom.bits=new Uint8Array(bytes); bloom.m=mBits; bloom.k=k; bloom.n=0; updateBloomUI(); }
+function bloomSet(i){ const byte=i>>3, off=i&7; bloom.bits[byte]|=(1<<off); }
+function bloomTest(i){ const byte=i>>3, off=i&7; return (bloom.bits[byte]&(1<<off))!==0; }
+async function bloomPositions(s){
+  const enc=new TextEncoder(); const data=enc.encode(s);
+  const h1buf=await crypto.subtle.digest('SHA-1',data);
+  const h2buf=await crypto.subtle.digest('SHA-256',data);
+  const h1=new Uint32Array(h1buf); const h2=new Uint32Array(h2buf);
+  const positions=[]; for(let i=0;i<bloom.k;i++){ const w1=h1[i%h1.length]>>>0; const w2=h2[(i*2)%h2.length]>>>0; const mix=(w1 ^ ((w2<<5)|(w2>>>27)) ^ (i*0x9e3779b9))>>>0; positions.push(mix % bloom.m); }
+  return positions;
+}
+async function bloomAdd(s){ const pos=await bloomPositions(s); pos.forEach(p=>bloomSet(p)); bloom.n++; }
+async function bloomProbablyHas(s){ const pos=await bloomPositions(s); return pos.every(p=>bloomTest(p)); }
+async function saveBloom(){ await idbPut('bloom', { k:'main', bits: bloom.bits, kf: bloom.k, m: bloom.m, n: bloom.n }); }
+async function loadBloom(){ const b=await idbGet('bloom','main'); if(b){ bloom.bits=new Uint8Array(b.bits); bloom.k=b.kf; bloom.m=b.m; bloom.n=b.n||0; } updateBloomUI(); }
+function estimateFPR(m,k,n){ if(!m||!k||!n) return 0; const exp=Math.exp(-(k*n)/m); return Math.pow(1-exp,k); }
+function updateBloomUI(){ $('#badgeBloom').textContent=bloom.bits.length?`Bloom: ${bloom.m} bits / k=${bloom.k}`:'Bloom: none'; $('#kvBloomBits').textContent=bloom.m||0; $('#kvBloomK').textContent=bloom.k||0; const fpr=estimateFPR(bloom.m,bloom.k,bloom.n); $('#kvFpr').textContent=bloom.m? (fpr*100).toFixed(4)+'%':'n/a'; }
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+let settings = { bloomBits:1<<20, bloomK:5, chunk:20000 };
+async function loadSettings(){ const s=await idbGet('meta','settings'); if(s){ settings=s.value; }
+  $('#inBloomBits').value=settings.bloomBits; $('#inBloomK').value=settings.bloomK; $('#inChunk').value=settings.chunk; }
+async function saveSettings(){ settings={ bloomBits:parseInt($('#inBloomBits').value,10)||(1<<20), bloomK:parseInt($('#inBloomK').value,10)||5, chunk:parseInt($('#inChunk').value,10)||20000 }; await idbPut('meta',{k:'settings', value:settings}); }
+
+/* =========================================================
+   WORKER (parse/normalize)
+   ========================================================= */
+const workerSrc = `
+self.onmessage = async (ev)=>{
+  const { kind, payload } = ev.data;
+  const normalizeRecord = (rec)=>{
+    const email=(rec.email ?? rec.mail ?? rec.e ?? '').trim();
+    const username=(rec.username ?? rec.user ?? rec.u ?? '').trim();
+    const domain= rec.domain ? String(rec.domain).trim().toLowerCase() : (email.includes('@')? email.split('@')[1].toLowerCase() : '');
+    const breach=(rec.breach ?? rec.source ?? rec.dataset ?? '').trim();
+    const hash=(rec.hash ?? rec.sha1 ?? rec.sha256 ?? '').trim().toLowerCase();
+    const emailLower=email?email.toLowerCase():'';
+    const usernameLower=username?username.toLowerCase():'';
+    return { emailLower, usernameLower, domain, breach, hash, raw:rec };
+  };
+  if(kind==='parseText'){
+    const { text, fmt } = payload;
+    let objects=[];
+    if(fmt==='csv'){
+      const rows=(function parseCSV(text){
+        const rows=[]; let i=0, cur='', inq=false; let row=[], c;
+        while(i<text.length){
+          c=text[i++]; if(inq){ if(c==='"' && text[i]==='"'){ cur+='"'; i++; } else if(c==='"'){ inq=false; } else cur+=c; }
+          else{ if(c==='"'){ inq=true; } else if(c===','){ row.push(cur); cur=''; }
+            else if(c==='\\n' || c==='\\r'){ if(c==='\\r' && text[i]==='\\n') i++; row.push(cur); cur=''; if(row.some(x=>x!=='')) rows.push(row); row=[]; }
+            else{ cur+=c; } }
+        }
+        if(cur.length || row.length){ row.push(cur); if(row.some(x=>x!=='')) rows.push(row); }
+        return rows;
+      })(text);
+      const isHeaderLikely = rows[0] && rows[0].every(c=>/^[a-z0-9_ -]{1,40}$/i.test(c));
+      let headers=null, start=0; if(isHeaderLikely){ headers=rows[0].map(s=>s.trim().toLowerCase()); start=1; }
+      for(let r=start;r<rows.length;r++){ const row=rows[r]; const obj={};
+        if(headers){ headers.forEach((h,idx)=>obj[h]=row[idx]??''); } else { row.forEach((v,idx)=>obj['col'+idx]=v); }
+        objects.push(obj);
+      }
+    }else if(fmt==='json'){
+      const arr=JSON.parse(text); if(Array.isArray(arr)) objects=arr; else objects=[arr];
+    }else if(fmt==='ndjson' || fmt==='txt'){
+      const lines=text.split(/\\r?\\n/).map(s=>s.trim()).filter(Boolean);
+      if(fmt==='ndjson'){ objects=lines.map(l=>{ try{ return JSON.parse(l); }catch{ return { value:l }; }}); }
+      else{ objects=lines.map(v=>({ value:v, email:v.includes('@')?v:'', username:v.includes('@')?'':v })); }
+    }
+    const normalized=objects.map(normalizeRecord);
+    self.postMessage({ kind:'parsed', count: normalized.length, items: normalized });
+  }
+};`;
+const workerUrl = URL.createObjectURL(new Blob([workerSrc],{type:'text/javascript'}));
+const worker = new Worker(workerUrl);
+
+/* =========================================================
+   IMPORT PIPELINE (+ gzip support if available)
+   ========================================================= */
+let importLog = [];
+function logImport(line){ importLog.push(line); if(importLog.length>5000) importLog.shift(); }
+
+function isGzip(file){ return /\.gz$/i.test(file.name); }
+async function readMaybeGzip(file){
+  if(isGzip(file) && 'DecompressionStream' in window){
+    const ds = new DecompressionStream('gzip');
+    const decompressed = file.stream().pipeThrough(ds);
+    const text = await new Response(decompressed).text();
+    return text;
+  }
+  // quick magic check fallback
+  const header = new Uint8Array(await file.slice(0,2).arrayBuffer());
+  if(header[0]===0x1f && header[1]===0x8b && 'DecompressionStream' in window){
+    const ds = new DecompressionStream('gzip');
+    const decompressed = file.stream().pipeThrough(ds);
+    const text = await new Response(decompressed).text();
+    return text;
+  }
+  return await file.text();
+}
+
+function detectFormat(name, text){
+  const ext=(name.split('.').pop()||'').toLowerCase().replace(/\.gz$/,'');
+  if(ext==='csv') return 'csv';
+  if(ext==='json') return 'json';
+  if(ext==='ndjson' || ext==='ndjs') return 'ndjson';
+  if(ext==='txt') return 'txt';
+  const t=text.trim();
+  if(t.startsWith('[')||t.startsWith('{')) return 'json';
+  if(text.includes('\\n') && text.includes(',')) return 'csv';
+  return 'txt';
+}
+
+async function importFile(file){
+  const t0=performance.now();
+  setStatus(`Reading ${file.name} (${(file.size/1e6).toFixed(2)} MB)…`);
+  let text='';
+  try{
+    text = await readMaybeGzip(file);
+  }catch(err){
+    console.error(err); toast('Failed to read file'); setStatus('Read error'); return;
+  }
+  const fmt=detectFormat(file.name,text);
+  $('#kvDataset').textContent = `${file.name} (${fmt})`;
+  $('#kvAction').textContent = `importing (${fmt})…`;
+  toast(`Parsing ${file.name} as ${fmt}…`);
+  worker.postMessage({kind:'parseText', payload:{ text, fmt }});
+  logImport(`[${new Date().toISOString()}] import ${file.name} fmt=${fmt} size=${file.size}`);
+  const t1=performance.now();
+  setStatus(`Queued parse for ${file.name} in ${(t1-t0).toFixed(0)}ms`);
+}
+
+worker.onmessage = async (ev)=>{
+  const {kind, count, items} = ev.data;
+  if(kind==='parsed'){
+    const t0=performance.now();
+    $('#status').textContent = `Parsed ${count} rows. Writing to IndexedDB…`;
+    await writeToIDB(items);
+    const t1=performance.now();
+    $('#status').textContent = `Imported ${count} rows in ${(t1-t0).toFixed(0)}ms. Rebuilding bloom…`;
+    await rebuildBloom();
+    await updateMetaCounts();
+    $('#status').textContent = `Import complete.`;
+    $('#kvAction').textContent = 'import complete';
+    toast(`Imported ${count} rows`);
+  }
+};
+
+async function writeToIDB(items){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('records','readwrite'); const store=tx.objectStore('records');
+    for(const it of items){ store.add(it); }
+    tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error);
+  });
+}
+async function updateMetaCounts(){ const n=await idbCount('records'); $('#badgeRecords').textContent=`Records: ${n}`; $('#kvIDB').textContent='ok'; $('#storeState').textContent=n?'Store: loaded':'Store: empty'; }
+
+/* =========================================================
+   REBUILD BLOOM
+   ========================================================= */
+async function rebuildBloom(){
+  const cfgBits=settings.bloomBits, cfgK=settings.bloomK;
+  bloomInit(cfgBits,cfgK);
+  const tx=db.transaction('records','readonly'); const store=tx.objectStore('records');
+  return new Promise((resolve,reject)=>{
+    let req=store.openCursor();
+    req.onsuccess=async ()=>{ const cur=req.result;
+      if(cur){ const v=cur.value; if(v.emailLower) await bloomAdd(v.emailLower); if(v.usernameLower) await bloomAdd(v.usernameLower); cur.continue(); }
+      else{ await saveBloom(); updateBloomUI(); resolve(); } };
+    req.onerror=()=>reject(req.error);
+  });
+}
+
+/* =========================================================
+   QUERY ENGINE
+   ========================================================= */
+let lastRenderedMatches = []; // for export/filter
+async function queryOne(raw){
+  const normalize=$('#optNormalize').checked;
+  const s=normalize?raw.toLowerCase():raw;
+  const useBloom=$('#optUseBloom').checked && bloom.bits.length>0;
+  if(useBloom){ const maybe=await bloomProbablyHas(s); if(!maybe){ return { input:raw, type:isEmail(s)?'email':'username', matches:[], bloom:'miss' }; } }
+  const isE=isEmail(s); const index=isE?'emailLower':'usernameLower'; const value=s; let matches=[];
+  await idbEachByIndex(index,value,(row)=>matches.push(row));
+
+  if($('#optHashCompare').checked && matches.length===0){
+    const encoder=new TextEncoder(); const buf=encoder.encode(s);
+    const h1=bytesToHex(await crypto.subtle.digest('SHA-1',buf));
+    const h256=bytesToHex(await crypto.subtle.digest('SHA-256',buf));
+    const tx=db.transaction('records','readonly'); const st=tx.objectStore('records');
+    await new Promise((resolve,reject)=>{
+      const req=st.openCursor();
+      req.onsuccess=()=>{ const cur=req.result; if(cur){ const v=cur.value; if(v.hash && (v.hash===h1 || v.hash===h256)) matches.push(v); cur.continue(); } else resolve(); };
+      req.onerror=()=>reject(req.error);
+    });
+  }
+  return { input:raw, type:isE?'email':'username', matches, bloom:useBloom?'maybe':'off' };
+}
+async function queryMany(items){ const out=[]; for(const s of items) out.push(await queryOne(s)); return out; }
+
+/* =========================================================
+   EXPORT / CLEAR
+   ========================================================= */
+async function exportAll(){
+  const rows=[]; const tx=db.transaction('records','readonly'); const st=tx.objectStore('records');
+  await new Promise((resolve,reject)=>{
+    const req=st.openCursor();
+    req.onsuccess=()=>{ const c=req.result; if(c){ rows.push(c.value); c.continue(); } else resolve(); };
+    req.onerror=()=>reject(req.error);
+  });
+  const blob=new Blob([JSON.stringify(rows,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`breach_records_export_${Date.now()}.json`; a.click(); URL.revokeObjectURL(a.href);
+  toast('Exported IndexedDB snapshot');
+}
+function exportMatchesCSV(){
+  const rows = lastRenderedMatches.map(r=>[r.idx, r.input, r.type, r.breach, JSON.stringify(r.details).replaceAll('"','""')]);
+  let csv='idx,input,type,breach,details\\n';
+  for(const r of rows){ csv += r.map(v=>`"${String(v)}"`).join(',')+'\\n'; }
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`matches_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  toast('Exported matches CSV');
+}
+
+/* =========================================================
+   RENDER + FILTER
+   ========================================================= */
+function renderResults(results){
+  const out = [];
+  const tbody = $('#tbody'); tbody.innerHTML='';
+  lastRenderedMatches.length = 0;
+  let idx=1;
+  for(const r of results){
+    if(r.matches.length){
+      out.push(`<div>「<b>${escapeHtml(r.input)}</b>」 → <span class="badge bad">MATCHES: ${r.matches.length}</span> (${r.type}, bloom:${r.bloom})</div>`);
+      r.matches.slice(0,200).forEach(m=>{
+        const tr=document.createElement('tr');
+        const rawStr=JSON.stringify(m.raw);
+        tr.innerHTML=`<td>${idx}</td><td>${escapeHtml(r.input)}</td><td>${r.type}</td><td>${escapeHtml(m.breach||'(unknown)')}</td><td>${escapeHtml(rawStr.length>600?rawStr.slice(0,600)+'…':rawStr)}</td>`;
+        tbody.appendChild(tr);
+        lastRenderedMatches.push({ idx, input:r.input, type:r.type, breach:m.breach||'(unknown)', details:m.raw });
+        idx++;
+      });
+    }else{
+      const badge=r.bloom==='miss' ? '<span class="badge ok">no (bloom miss)</span>' : '<span class="badge">no</span>';
+      out.push(`<div>「<b>${escapeHtml(r.input)}</b>」 → ${badge} (${r.type}, bloom:${r.bloom})</div>`);
+    }
+  }
+  $('#results').innerHTML = out.join('');
+}
+
+function applyFilter(){
+  const q = $('#filterInput').value.trim().toLowerCase();
+  const rows = $$('#tbody tr');
+  if(!q){ rows.forEach(r=>r.style.display=''); return; }
+  rows.forEach(r=>{
+    const txt=r.textContent.toLowerCase();
+    r.style.display = txt.includes(q)?'':'none';
+  });
+}
+
+/* =========================================================
+   UI WIRING
+   ========================================================= */
+$('#btnCheck').addEventListener('click', async ()=>{
+  const q=$('#query').value.trim(); if(!q){ setStatus('Enter a value.'); return; }
+  const items=tokenize(q,$('#optTokenize').checked); setStatus(`Checking ${items.length} value(s)…`);
+  const results=await queryMany(items); renderResults(results); setStatus('Done.');
+});
+$('#query').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); $('#btnCheck').click(); }});
+$('#btnBulkCheck').addEventListener('click', async ()=>{
+  const q=$('#bulk').value.trim(); if(!q){ setStatus('Paste values first.'); return; }
+  const items=tokenize(q,true); setStatus(`Checking ${items.length} value(s)…`);
+  const results=await queryMany(items); renderResults(results); setStatus('Done.');
+});
+$('#btnImport').addEventListener('click', async ()=>{
+  const f=$('#file').files[0]; if(!f){ setStatus('Choose a dataset file.'); toast('Choose a dataset file'); return; }
+  await importFile(f); await updateMetaCounts();
+});
+$('#tbImport').addEventListener('click', ()=>$('#file').click());
+$('#tbRebuild').addEventListener('click', async ()=>{ setStatus('Rebuilding bloom…'); await rebuildBloom(); setStatus('Bloom rebuilt.'); toast('Bloom rebuilt'); });
+$('#tbExport').addEventListener('click', exportAll);
+$('#btnExportMatches').addEventListener('click', exportMatchesCSV);
+$('#btnClearMatches').addEventListener('click', ()=>{ $('#tbody').innerHTML=''; lastRenderedMatches.length=0; toast('Cleared matches table'); });
+
+$('#filterInput').addEventListener('input', applyFilter);
+
+/* menus */
+function fitToScreen(){
+  document.body.classList.add('responsive');
+  const w=$('#mainWin'); w.style.left=''; w.style.top=''; w.style.width=''; w.style.height='';
+  $('#kvAction').textContent='fit to screen'; saveWinGeom();
+}
+function zoomIn(){ const z=(parseFloat(document.documentElement.style.zoom||'1')||1)+0.05; document.documentElement.style.zoom=String(z); saveWinGeom(); }
+function zoomOut(){ const z=(parseFloat(document.documentElement.style.zoom||'1')||1)-0.05; document.documentElement.style.zoom=String(Math.max(0.5,z)); saveWinGeom(); }
+function zoomReset(){ document.documentElement.style.zoom='1'; saveWinGeom(); }
+
+function runMenu(cmd){
+  switch(cmd){
+    case 'import': case 'import-append': $('#file').click(); break;
+    case 'export': exportAll(); break;
+    case 'clear': (async()=>{ await idbClear('records'); await idbClear('bloom'); await updateMetaCounts(); bloomInit(0,0); setStatus('Store cleared.'); toast('Store cleared'); })(); break;
+    case 'quit': window.close(); break;
+    case 'copy': document.execCommand('copy'); break;
+    case 'paste': navigator.clipboard.readText().then(t=>{ const el=document.activeElement; if(el && 'value' in el) el.value += t; }); break;
+    case 'selectall': document.execCommand('selectAll'); break;
+    case 'settings': $('#dlgSettings').classList.remove('hidden'); break;
+    case 'rebuild': (async()=>{ setStatus('Rebuilding bloom…'); await rebuildBloom(); setStatus('Bloom rebuilt.'); toast('Bloom rebuilt'); })(); break;
+    case 'bloom-verify': alert(`Bloom bits: ${bloom.m}\\nHash funcs (k): ${bloom.k}\\nInserted (n): ${bloom.n}\\nEstimated FPR: ${ (estimateFPR(bloom.m,bloom.k,bloom.n)*100).toFixed(4) }%`); break;
+    case 'wipe-bloom': (async()=>{ await idbPut('bloom',{k:'main', bits:new Uint8Array(0), kf:0, m:0, n:0}); await loadBloom(); setStatus('Bloom wiped.'); toast('Bloom wiped'); })(); break;
+    case 'clear-matches': $('#tbody').innerHTML=''; lastRenderedMatches.length=0; toast('Cleared matches table'); break;
+    case 'open-log': openLog(); break;
+
+    case 'fit': fitToScreen(); break;
+    case 'reset': resetWindowPosition(); break;
+    case 'dock-left': dock('left'); break;
+    case 'dock-right': dock('right'); break;
+    case 'undock': undock(); break;
+    case 'zoom-in': zoomIn(); break;
+    case 'zoom-out': zoomOut(); break;
+    case 'zoom-reset': zoomReset(); break;
+
+    case 'about': $('#dlgAbout').classList.remove('hidden'); break;
+    case 'docs': $('#dlgDocs').classList.remove('hidden'); break;
+    case 'shortcuts': $('#dlgKeys').classList.remove('hidden'); break;
+  }
+}
+
+/* Settings save/close */
+$('#btnSaveSettings').addEventListener('click', async ()=>{
+  await saveSettings(); await loadSettings(); bloomInit(settings.bloomBits, settings.bloomK); await saveBloom();
+  $('#dlgSettings').classList.add('hidden'); setStatus('Settings saved.'); toast('Settings saved');
+});
+$$('[data-close]').forEach(b=>b.addEventListener('click',()=>$(b.dataset.close).classList.add('hidden')));
+
+/* Keyboard shortcuts */
+window.addEventListener('keydown', (e)=>{
+  if(e.ctrlKey && e.key.toLowerCase()==='o'){ e.preventDefault(); $('#file').click(); }
+  if(e.ctrlKey && e.key.toLowerCase()==='s'){ e.preventDefault(); exportAll(); }
+  if(e.ctrlKey && e.key.toLowerCase()==='f'){ e.preventDefault(); $('#query').focus(); $('#query').select(); }
+  if(e.ctrlKey && (e.key==='='||e.key==='+')){ e.preventDefault(); zoomIn(); }
+  if(e.ctrlKey && e.key==='-'){ e.preventDefault(); zoomOut(); }
+  if(e.ctrlKey && e.key==='0'){ e.preventDefault(); zoomReset(); }
+  if(e.altKey && e.key==='0'){ e.preventDefault(); resetWindowPosition(); }
+  if(e.altKey && e.key==='1'){ e.preventDefault(); dock('left'); }
+  if(e.altKey && e.key==='2'){ e.preventDefault(); dock('right'); }
+  if(e.key==='Escape'){ $$('.dialog').forEach(d=>d.classList.add('hidden')); }
+});
+
+/* =========================================================
+   RESPONSIVE FLAG
+   ========================================================= */
+function applyResponsiveFlag(){
+  const small = window.innerWidth < 1000 || window.innerHeight < 720;
+  document.body.classList.toggle('responsive', small);
+}
+window.addEventListener('resize', applyResponsiveFlag);
+window.addEventListener('orientationchange', applyResponsiveFlag);
+
+/* =========================================================
+   DRAG & DROP (files and text)
+   ========================================================= */
+(function dragDrop(){
+  const mask = $('#dropmask');
+  const show=()=>mask.classList.add('active');
+  const hide=()=>mask.classList.remove('active');
+  ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,(e)=>{ e.preventDefault(); show(); }));
+  ['dragleave','drop'].forEach(ev=>document.addEventListener(ev,(e)=>{ e.preventDefault(); hide(); }));
+  document.addEventListener('drop', async (e)=>{
+    const dt=e.dataTransfer;
+    if(dt.files && dt.files.length){
+      for(const f of dt.files){ await importFile(f); }
+      await updateMetaCounts();
+    }else{
+      const t=dt.getData('text');
+      if(t){ $('#query').value=t; $('#btnCheck').click(); }
+    }
+  });
+})();
+
+/* =========================================================
+   LOG VIEWER
+   ========================================================= */
+function openLog(){
+  const dlg = document.createElement('div');
+  dlg.className='dialog';
+  dlg.innerHTML=`
+    <div class="head">Import Log</div>
+    <div class="body"><pre class="help" style="white-space:pre-wrap">${escapeHtml(importLog.join('\\n')||'(empty)')}</pre></div>
+    <div class="foot"><button class="button" data-close="self">Close</button></div>`;
+  $('#desktop').appendChild(dlg);
+  const close=()=>dlg.remove();
+  dlg.querySelector('[data-close]').addEventListener('click', close);
+  // draggable
+  (function mkd(){ const head=dlg.querySelector('.head'); let ox=0,oy=0,drag=false; head.addEventListener('mousedown',(e)=>{ drag=true; const r=dlg.getBoundingClientRect(); ox=e.clientX-r.left; oy=e.clientY-r.top; document.body.style.userSelect='none'; });
+    window.addEventListener('mousemove',(e)=>{ if(!drag) return; dlg.style.left=(e.clientX-ox)+'px'; dlg.style.top=(e.clientY-oy)+'px'; dlg.style.position='fixed'; });
+    window.addEventListener('mouseup',()=>{ drag=false; document.body.style.userSelect=''; }); })();
+}
+
+/* =========================================================
+   BOOTSTRAP
+   ========================================================= */
+(async function boot(){
+  applyResponsiveFlag();
+  loadWinGeom();
+  await idbOpen();
+  await loadSettings();
+  await loadBloom();
+  await updateMetaCounts();
+  setStatus('Ready.');
+  $('#kvDataset').textContent='local';
+  toast('Breach Data Checker ready');
+})();
+</script>
+</body>
+</html>
